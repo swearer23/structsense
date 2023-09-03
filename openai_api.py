@@ -1,5 +1,9 @@
+from dotenv import load_dotenv
+import os
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import create_extraction_chain
+
+load_dotenv()
 
 schema = {
     "properties": {
@@ -27,7 +31,7 @@ inp = """
     """
 
 # Run chain
-llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo", openai_api_key='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')
+llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo", openai_api_key=os.getenv("OPENAI_API_KEY"))
 chain = create_extraction_chain(contract_schema, llm)
 output = chain.run(inp)
 print(output)

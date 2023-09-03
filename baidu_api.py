@@ -1,6 +1,11 @@
+from dotenv import load_dotenv
+import os
+
 from langchain.chat_models import ErnieBotChat
 from langchain.chains import create_extraction_chain
 from langchain.schema import HumanMessage
+
+load_dotenv()
 
 schema = {
     "properties": {
@@ -26,7 +31,7 @@ contract_schema = {
 inp = """'交易方留存信息表\n交易方留存信息表\n房屋出租方\n\t\n甲方（签章）：\n甲方（签章）：\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\n年\n年\n\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\n月\n月\n\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\n日\n日\n姓名\n周树凤\n英文名\nX\n性别\n女\n国籍\n中国\n出生日期\n1962\n年\n11\n月\n26\n日\n证件名称\n身份证\n证件号码\n110108196211262262\n电子邮箱\nX\n通讯地址\n北京市海淀区学院路37号411宅309号\n21.0'"""
 
 # Run chain
-llm = ErnieBotChat(ernie_client_id='XPGsyynViniDGITASe2XVmAH', ernie_client_secret='DMC8x3VyYqDSEM26FZsg1OTaAMu8IcEv')
+llm = ErnieBotChat(ernie_client_id=os.getenv('BAIDU_API_ID'), ernie_client_secret=os.getenv('BAIDU_API_SECRET'))
 llm([
     HumanMessage(content='hello there, who are you?')
 ])
