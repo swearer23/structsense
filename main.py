@@ -43,20 +43,14 @@ import json
 from langchain.llms import TextGen
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
-from pydantic import BaseModel, Field
 from langchain.prompts import (
     PromptTemplate,
 )
 
 model_url = "http://localhost:5000"
 
-class Contract(BaseModel):
-    renter: str = Field(..., description="房屋出租方姓名")
-
 loader = PyPDFLoader('docs/lianjia.pdf')
-
-text_splitter = CharacterTextSplitter(        
-    separator = "\n\n",
+text_splitter = CharacterTextSplitter(
     chunk_size = 5000,
     chunk_overlap  = 200,
     length_function = len,
@@ -64,12 +58,13 @@ text_splitter = CharacterTextSplitter(
 )
 pages = loader.load_and_split(text_splitter)
         
-llm = TextGen(model_url=model_url, temperature=0.001, top_p=0.9, top_k=20, max_tokens=1000)
+llm = TextGen(model_url=model_url, temperature=0.001, top_p=0.95, top_k=1, max_tokens=5000)
 
 # chain = create_extraction_chain(schema, llm)
 
 extract_schema = {
-  "renter": "房屋出租方姓名"
+  "renter": "房屋出租方姓名",
+  "rentee": "房屋承租方姓名",
 }
 
 extract_template = json.dumps(extract_schema)
@@ -94,7 +89,7 @@ response部分中应仅包含抽取信息的json格式，不要添加任何评�
     input_variables=["query", "extract_template"]
 )
 
-inp = prompt.format_prompt(query=pages[1].page_content.replace('\n', '\\n').replace('\t', '\\t'), extract_template=extract_template)
+inp = prompt.format_prompt(query=pages[3].page_content.replace('\n', '\\n').replace('\t', '\\t'), extract_template=extract_template)
 output = llm(inp.to_string(),)
 
 # for page in pages:
