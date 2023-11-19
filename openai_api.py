@@ -50,6 +50,8 @@ text_splitter = CharacterTextSplitter(
 )
 pages = loader.load_and_split(text_splitter)
 text = '\n'.join([page.page_content for page in pages])
+
+print(text)
 # Run chain
 llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo", openai_api_key=os.getenv("OPENAI_API_KEY"))
 chain = create_extraction_chain(contract_schema, llm)

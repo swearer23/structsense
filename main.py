@@ -47,7 +47,7 @@ from langchain.prompts import (
     PromptTemplate,
 )
 
-model_url = "http://localhost:5000"
+model_url = "http://0.0.0.0:5000"
 
 loader = PyPDFLoader('docs/lianjia.pdf')
 text_splitter = CharacterTextSplitter(
@@ -89,8 +89,9 @@ response部分中应仅包含抽取信息的json格式，不要添加任何评�
     input_variables=["query", "extract_template"]
 )
 
-inp = prompt.format_prompt(query=pages[3].page_content.replace('\n', '\\n').replace('\t', '\\t'), extract_template=extract_template)
+inp = prompt.format_prompt(query=pages[1].page_content.replace('\n', '\\n').replace('\t', '\\t'), extract_template=extract_template)
 output = llm(inp.to_string(),)
+print(output)
 
 # for page in pages:
     
