@@ -8,6 +8,6 @@ def main(pdf_path):
   return result
 
 if __name__ == '__main__':
-  pdf_path = './docs/PO.PDF'
+  pdf_path = './docs/PurchaseOrder47648175.PDF'
   key_info = main(pdf_path)
   pprint(key_info)
