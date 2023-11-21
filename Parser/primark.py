@@ -93,6 +93,10 @@ class PrimarkPOContract(BasePOContract):
           })
     return package_info
   
+  def get_delivery_detail(self):
+    print(self.tables)
+    pass
+  
   def get_company_contact_info(self):
     company_contact = self.text_cluster.get('cluster').get(1)
     for i, str in enumerate(company_contact):
@@ -151,6 +155,7 @@ class PrimarkPOContract(BasePOContract):
     delivery_tables = self.get_delivery_tables()
     order_meta_info = self.get_order_meta_info()
     delivery_summary = self.get_delivery_summary()
+    self.get_delivery_detail()
     self.template = {
       **order_meta_info,
       **delivery_summary,

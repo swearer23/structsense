@@ -13,4 +13,4 @@ if __name__ == '__main__':
   # key_info = main(pdf_path)
   pdf_path = './docs/PO1077867-0.PDF'
   key_info = main(pdf_path, 'PrimarkPOContract')
-  pprint(key_info)
+  # pprint(key_info)
