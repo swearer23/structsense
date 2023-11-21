@@ -94,12 +94,12 @@ def extract_words(pdf):
           })
   return words
 
-def get_text_cluster(pdf_path):
+def get_text_cluster(pdf_path, eps=100):
   # 打开PDF文件
   pdf = fitz.open(pdf_path)
   words = extract_words(pdf)
   features = define_features(words)
-  clusters = get_clusters(features, words, eps=100)
+  clusters = get_clusters(features, words, eps)
   clusters['tables'] = get_table_cluster(pdf)
   clusters['raw_blocks'], clusters['blocks_text'] = get_raw_blocks(pdf)
   pdf.close()
