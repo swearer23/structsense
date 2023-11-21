@@ -5,7 +5,7 @@ class RawBlock:
     self.raw_block = raw_block
 
   def get_text(self):
-    return self.raw_block[4: -3]
+    return self.raw_block[4: -3][0]
   
   def get_y_0(self):
     return self.raw_block[1]
@@ -36,6 +36,9 @@ class ParserTable:
     self.df = table['pd']
     self.rect = table['rect']
     self.page = table['page']
+
+  def __repr__(self) -> str:
+    return f"ParserTable({self.df})"
 
 class ParserBaseClass:
   def __init__(self, text_cluster, pdf_meta, *args, **kwargs):
