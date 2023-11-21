@@ -6,9 +6,11 @@ def get_raw_blocks(pdf: fitz.Document):
   blocks = []
   for page_num in range(pdf.page_count):
     page = pdf.load_page(page_num)
-    blocks.extend([x for x in page.get_text("blocks")])
+    blocks.extend([[
+      *x, page_num
+    ] for x in page.get_text("blocks")])
 
-  blocks_text = [list(t[4:-2]) for t in blocks]
+  blocks_text = [list(t[4:-3]) for t in blocks]
   return blocks, blocks_text, 
 
 def get_table_cluster(pdf: fitz.Document):
@@ -17,7 +19,11 @@ def get_table_cluster(pdf: fitz.Document):
     page = pdf.load_page(page_num)
     table_finder = page.find_tables()
     for table in table_finder.tables:
-      pd_tables.append(table.to_pandas())
+      pd_tables.append({
+        "pd": table.to_pandas(),
+        "rect": table.bbox,
+        "page": page_num
+      })
   return pd_tables
 
 def get_clusters(features, words, eps=100, min_samples=2):
@@ -102,9 +108,13 @@ def get_text_cluster(pdf_path, eps=100):
   clusters = get_clusters(features, words, eps)
   clusters['tables'] = get_table_cluster(pdf)
   clusters['raw_blocks'], clusters['blocks_text'] = get_raw_blocks(pdf)
+  pdf_meta = {
+    "width": pdf.load_page(0).rect.width,
+    "height": pdf.load_page(0).rect.height,
+  }
   pdf.close()
-  return clusters
+  return clusters, pdf_meta
 
 if __name__ == '__main__':
-  clusters = get_text_cluster("./docs/PO.PDF")
-  pprint(clusters)
+  clusters, pdf_meta = get_text_cluster("./docs/PO.PDF")
+  pprint(clusters, pdf_meta)

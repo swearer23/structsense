@@ -4,8 +4,8 @@ from Parser.primark import PrimarkPOContract
 from pprint import pprint
 
 def main(pdf_path, clsname='WoolWorthsGroupPOContract'):
-  clusters = get_text_cluster(pdf_path, eps=30)
-  result = globals()[clsname](clusters).parse()
+  clusters, pdf_meta = get_text_cluster(pdf_path, eps=30)
+  result = globals()[clsname](clusters, pdf_meta).parse()
   return result
 
 if __name__ == '__main__':
@@ -13,4 +13,4 @@ if __name__ == '__main__':
   # key_info = main(pdf_path)
   pdf_path = './docs/PO1077867-0.PDF'
   key_info = main(pdf_path, 'PrimarkPOContract')
-  # pprint(key_info)
+  pprint(key_info)

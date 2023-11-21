@@ -59,7 +59,7 @@ class WoolWorthsGroupPOContract(BasePOContract):
     return total_value.split(':')[1].strip()
   
   def get_sku_info(self):
-    sku_pd = self.text_cluster.get('tables')[1]
+    sku_pd = self.text_cluster.get('tables')[1].df
     sku_pd.columns = sku_pd.iloc[0].values
     sku_pd = sku_pd.drop(0)
     return (sku_pd.to_dict('records'))
