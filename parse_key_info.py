@@ -4,7 +4,6 @@ from pprint import pprint
 
 def main(pdf_path):
   clusters = get_text_cluster(pdf_path)
-  pprint(clusters)
   result = WoolWorthsGroupPOContract(clusters).parse()
   return result
 

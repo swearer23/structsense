@@ -1,4 +1,6 @@
 from Parser.base import BasePOContract
+from pprint import pprint
+from itertools import chain
 
 class WoolWorthsGroupPOContract(BasePOContract):
   def __init__(self, *args, **kwargs):
@@ -52,6 +54,16 @@ class WoolWorthsGroupPOContract(BasePOContract):
     vendor_info = self.text_cluster.get('cluster').get(5)
     return " ".join(vendor_info).split(':')[1].strip()
   
+  def get_total_value(self):
+    [total_value] = [x for x in self.flat_blocks_text if 'Total Value' in x]
+    return total_value.split(':')[1].strip()
+  
+  def get_sku_info(self):
+    sku_pd = self.text_cluster.get('tables')[1]
+    sku_pd.columns = sku_pd.iloc[0].values
+    sku_pd = sku_pd.drop(0)
+    return (sku_pd.to_dict('records'))
+  
   def parse(self, *args, **kwargs):
     company_phone, company_fax = self.get_company_contact_info()
     contact_name, contact_phone, contact_email = self.get_contact_info()
@@ -59,6 +71,8 @@ class WoolWorthsGroupPOContract(BasePOContract):
     shipment_type, incoterms, dist_method, order_data, order_group_id, page_number = self.get_order_meta_info()
     final_destination = self.get_destination_info()
     vendor = self.get_vendor_info()
+    total_value = self.get_total_value()
+    sku = self.get_sku_info()
     self.template = {
       "company_address": self.get_company_address(),
       "company_phone": company_phone,
@@ -79,5 +93,7 @@ class WoolWorthsGroupPOContract(BasePOContract):
       "pageNumber": page_number,
       "finalDestination": final_destination,
       "vendor": vendor,
+      "totalValue": total_value,
+      "SKU": sku
     }
     return self.template

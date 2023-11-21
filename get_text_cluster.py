@@ -2,6 +2,24 @@ import fitz
 from pprint import pprint
 from sklearn.cluster import DBSCAN
 
+def get_raw_blocks(pdf: fitz.Document):
+  blocks = []
+  for page_num in range(pdf.page_count):
+    page = pdf.load_page(page_num)
+    blocks.extend([x for x in page.get_text("blocks")])
+
+  blocks_text = [list(t[4:-2]) for t in blocks]
+  return blocks, blocks_text, 
+
+def get_table_cluster(pdf: fitz.Document):
+  pd_tables = []
+  for page_num in range(pdf.page_count):
+    page = pdf.load_page(page_num)
+    table_finder = page.find_tables()
+    for table in table_finder.tables:
+      pd_tables.append(table.to_pandas())
+  return pd_tables
+
 def get_clusters(features, words, eps=100, min_samples=2):
   words_map = {}
 
@@ -55,34 +73,36 @@ def extract_words(pdf):
   words = []
   # 遍历每一页
   for page_num in range(pdf.page_count):
-      page = pdf.load_page(page_num)
+    page = pdf.load_page(page_num)
 
-      # 提取文本块信息
-      blocks = [x for x in page.get_text("dict").get('blocks') if x.get('type') == 0]  # 获取每个文本块的信息
-      for b in blocks:
-          lines = b.get('lines')
-          for line in lines:
-              spans = line.get('spans')
-              for span in spans:
-                  words.append({
-                      'text': span.get('text'),
-                      'font': span.get('font'),
-                      'size': span.get('size'),
-                      'bbox': span.get('bbox'),
-                      'color': span.get('color'),
-                      'linebbox': line.get('bbox'),
-                      'blockbbox': b.get('bbox'),
-                      'fontflag': b.get('flags', 0),
-                  })
+    # 提取文本块信息
+    blocks = [x for x in page.get_text("dict").get('blocks') if x.get('type') == 0]  # 获取每个文本块的信息
+    for b in blocks:
+      lines = b.get('lines')
+      for line in lines:
+        spans = line.get('spans')
+        for span in spans:
+          words.append({
+            'text': span.get('text'),
+            'font': span.get('font'),
+            'size': span.get('size'),
+            'bbox': span.get('bbox'),
+            'color': span.get('color'),
+            'linebbox': line.get('bbox'),
+            'blockbbox': b.get('bbox'),
+            'fontflag': b.get('flags', 0),
+          })
   return words
 
 def get_text_cluster(pdf_path):
   # 打开PDF文件
   pdf = fitz.open(pdf_path)
   words = extract_words(pdf)
-  pdf.close()
   features = define_features(words)
   clusters = get_clusters(features, words, eps=100)
+  clusters['tables'] = get_table_cluster(pdf)
+  clusters['raw_blocks'], clusters['blocks_text'] = get_raw_blocks(pdf)
+  pdf.close()
   return clusters
 
 if __name__ == '__main__':
