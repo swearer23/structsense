@@ -21,9 +21,9 @@ class WoolWorthsGroupPOContract(BasePOContract):
     
   def get_contact_info(self):
     contact_info = self.text_cluster.get('cluster').get(6)
-    contact_name = contact_info[3]
-    contact_phone = contact_info[4]
-    contact_email = contact_info[5]
+    contact_name = contact_info[3].split(':')[1].strip()
+    contact_phone = contact_info[4].split(':')[1].strip()
+    contact_email = contact_info[5].split(':')[1].strip()
     return contact_name, contact_phone, contact_email
   
   def get_purchase_order_info(self):
@@ -56,12 +56,19 @@ class WoolWorthsGroupPOContract(BasePOContract):
   
   def get_total_value(self):
     [total_value] = [x for x in self.flat_blocks_text if 'Total Value' in x]
-    return total_value.split(':')[1].strip()
+    total_value = total_value.split(':')[1].strip()
+    total_value = [x for x in total_value.split(' ') if x.strip() != '']
+    currency_value = total_value[0]
+    currency_type = total_value[1]
+    return currency_value, currency_type
   
   def get_sku_info(self):
-    sku_pd = self.text_cluster.get('tables')[1].df
+    sku_pd = self.tables[1].df
     sku_pd.columns = sku_pd.iloc[0].values
     sku_pd = sku_pd.drop(0)
+    sku_pd['price_per_unit'] = sku_pd['Price per Unit'].apply(lambda x: x.split(' ')[0] if x.strip() != '' else None)
+    sku_pd['price_per_unit'] = sku_pd['price_per_unit'].ffill()
+    sku_pd['total_price'] = sku_pd['price_per_unit'].astype(float) * sku_pd['QTY'].astype(float)
     return (sku_pd.to_dict('records'))
   
   def parse(self, *args, **kwargs):
@@ -71,7 +78,7 @@ class WoolWorthsGroupPOContract(BasePOContract):
     shipment_type, incoterms, dist_method, order_data, order_group_id, page_number = self.get_order_meta_info()
     final_destination = self.get_destination_info()
     vendor = self.get_vendor_info()
-    total_value = self.get_total_value()
+    currency_value, currency_type = self.get_total_value()
     sku = self.get_sku_info()
     self.template = {
       "company_address": self.get_company_address(),
@@ -93,7 +100,8 @@ class WoolWorthsGroupPOContract(BasePOContract):
       "pageNumber": page_number,
       "finalDestination": final_destination,
       "vendor": vendor,
-      "totalValue": total_value,
+      "totalValue": currency_value,
+      "currency": currency_type,
       "SKU": sku
     }
     return self.template

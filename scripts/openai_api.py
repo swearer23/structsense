@@ -1,9 +1,10 @@
 from dotenv import load_dotenv
 import os
 from langchain.chat_models import ChatOpenAI
-from langchain.chains import create_extraction_chain
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
+from langchain.prompts import PromptTemplate
+from pprint import pprint
 
 load_dotenv()
 
@@ -33,15 +34,20 @@ contract_schema = {
     "required": ["房屋出租方", "房屋承租方"],
 }
 
-# Run 
-# query = """Alex is 5 feet tall. Claudia is 1 feet taller Alex and jumps higher than him. Claudia is a brunette and Alex is blonde."""
-# inp = """老王身高5英尺。Claudia 比 老王高1英尺，并且比他跳得更高。Claudia 是棕发，而 老王是金发。
-# 老李身高有6英尺，当然由于是中国人，所以头发是黑色的。"""
+template = '''
+You are a PDF parser expert to extract assigned content from given content or file.
+Answer the user query based on instruction and query content.
+Based on the following contract schema, extract the content from the given contract.
 
-inp = """
-    交易方留存信息表\n交易方留存信息表\n房屋出租方\n\t\n甲方（签章）：\n甲方（签章）：\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\n年\n年\n\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\n月\n月\n\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\n日\n日\n姓名\n周树凤\n英文名\nX\n性别\n女\n国籍\n中国\n出生日期\n1962\n年\n11\n月\n26\n日\n证件名称\n身份证\n证件号码\n110108196211262262\n电子邮箱\nX\n通讯地址\n北京市海淀区学院路37号411宅309号\n21.0
-    """
-loader = PyPDFLoader('docs/lianjia.pdf')
+# input:
+
+{input}
+
+# now extract all tables from the given contract and reply the extracted content in json format.:
+
+'''
+
+loader = PyPDFLoader('./docs/PO1077867-0.PDF')
 text_splitter = CharacterTextSplitter(
     chunk_size = 5000,
     chunk_overlap  = 200,
@@ -51,9 +57,21 @@ text_splitter = CharacterTextSplitter(
 pages = loader.load_and_split(text_splitter)
 text = '\n'.join([page.page_content for page in pages])
 
-print(text)
-# Run chain
-llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo", openai_api_key=os.getenv("OPENAI_API_KEY"))
-chain = create_extraction_chain(contract_schema, llm)
-output = chain.run(text.replace('\n', '\\n').replace('\t', '\\t'))
-print(output)
+chat_prompt = PromptTemplate.from_template(template)
+
+chat_prompt = chat_prompt.format(input=text)
+
+# This code is for v1 of the openai package: pypi.org/project/openai
+from openai import OpenAI
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+response = client.chat.completions.create(
+  model="gpt-3.5-turbo-16k",
+  messages=[{
+    "role": "assistant",
+    "content": chat_prompt,
+  }],
+  temperature=0.2,
+)
+
+pprint(response)

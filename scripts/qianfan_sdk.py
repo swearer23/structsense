@@ -19,18 +19,31 @@ class POContract(BaseModel):
     contactEmail: str = Field(..., title="联系邮箱")
 
 parser = PydanticOutputParser(pydantic_object=POContract)
+# template = '''
+#     You are a bot to extract assigned content from given content or file.
+#     Answer the user query based on instruction and query content.
+#     {format_instructions}\n{query}\n.
+#     response only json format of extracted content according to schema, do not add anything else.
+#     the response should starts with \'\'\'json and ends with \'\'\'.
+#     '''
+template = '''
+You are a PDF parser expert to extract assigned content from given content or file.
+Answer the user query based on instruction and query content.
+Based on the following contract schema, extract the content from the given contract.
+
+# input:
+
+{query}
+
+# now extract all tables from the given contract and reply the extracted content in json format.:
+
+'''
 prompt = PromptTemplate(
-    template='''
-    You are a bot to extract assigned content from given content or file.
-    Answer the user query based on instruction and query content.
-    {format_instructions}\n{query}\n.
-    response only json format of extracted content according to schema, do not add anything else.
-    the response should starts with \'\'\'json and ends with \'\'\'.
-    ''',
+    template=template,
     input_variables=["query"],
-    partial_variables={"format_instructions": parser.get_format_instructions()},
+    # partial_variables={"format_instructions": parser.get_format_instructions()},
 )
-loader = PyPDFLoader('docs/PO.PDF')
+loader = PyPDFLoader('docs/PurchaseOrder47648175.PDF')
 text_splitter = CharacterTextSplitter(
     chunk_size = 5000,
     chunk_overlap  = 200,
@@ -41,6 +54,6 @@ pages = loader.load_and_split(text_splitter)
 query = '\n'.join([page.page_content for page in pages])
 _input = prompt.format_prompt(query=query)
 
-resp = comp.do(model="ERNIE-Bot", prompt=_input.to_string())
+resp = comp.do(model="ERNIE-Bot-turbo", prompt=_input.to_string())
 
 print(resp.body.get('result'))
