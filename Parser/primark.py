@@ -3,6 +3,7 @@ from pprint import pprint
 from itertools import chain
 import re
 import pandas as pd
+from Parser.utils import padding_number
 
 class PrimarkPOContract(BasePOContract):
   def __init__(self, *args, **kwargs):
@@ -20,15 +21,20 @@ class PrimarkPOContract(BasePOContract):
     return pd.iloc[0, 0].replace('\n', ' ')
   
   def get_factory_info(self):
-    pd = self.text_cluster.get('tables')[0]['pd']
-    return pd.iloc[0, 6].replace('\n', ' ')
+    line_one = self.tables[0].df.iloc[0, :].values.tolist()
+    line_one = [x for x in line_one if x is not None and x != '']
+    return line_one[1].split('\n')[1]
   
   def get_order_meta_info(self):
     pd = self.text_cluster.get('tables')[0]['pd']
-    sub_pd = pd.iloc[1:6, :].copy().dropna(axis=1, how='all')
+    sub_pd = pd.iloc[1:, :].copy().dropna(axis=1, how='all')
     ret = {}
     for pair in list(chain.from_iterable(sub_pd.values.tolist())):
+      if pair is None or ':' not in pair:
+        continue
       [k, v] = [x.strip() for x in pair.split(':')]
+      if k.startswith('Changes from prior'):
+        break
       ret[k] = v
     return ret
   
@@ -60,7 +66,7 @@ class PrimarkPOContract(BasePOContract):
           table = table.dropna(axis=1, how='all')
           cols = [x.replace('\n', ' ') for x in table.iloc[0].values if x is not None]
           rows = [
-            [x for x in row if x != '']
+            [x for x in row if x != '' and x is not None]
             for row in table.iloc[1:, :].copy().values.tolist() 
           ]
           total_unit = rows[-1][-2]
@@ -100,26 +106,30 @@ class PrimarkPOContract(BasePOContract):
     }
     flag_start = False
     for table in self.tables:
+      print(table)
       if table == start_table:
-        # print(table.df)
         # print([x for x in table.df.columns.values.tolist() if not x.startswith('Col')])
         flag_start = True
       if not flag_start: continue
       # text = table.df.to_string(index=False, header=True)
       # print(111111111, 'Destination Number' in text, text)
-      if 'Destination Number' in table.df.to_string(index=True, header=True):
-        if 'Delivery Totals' in table.df.to_string(index=False, header=False):
-          total_info = ([
-            x for x in table.df.iloc[1, :].copy().values.tolist()
-            if x is not None and x != '' and x != '0'
-          ])
-          ret['delivery_totals'] = {
-            'total_unit': total_info[1],
-            'total_packs': total_info[2],
-            'total_value': total_info[3],
-          }
-          flag_start = False
-          break
+      if 'Destination Number' in table.df.columns.values.tolist(): # to_string(index=True, header=True):
+        print(table)
+        for i in range(table.df.shape[0]):
+          if 'Delivery Totals' in table.df.iloc[i, :].values.tolist():
+            total_info = [
+              x for x in table.df.iloc[i, :].copy().values.tolist()
+              if x is not None and x != '' # and x != '0'
+            ]
+            # print(table.df.iloc[i, :].values.tolist())
+            # print(total_info)
+            ret['delivery_totals'] = {
+              'total_unit': total_info[1],
+              'total_packs': total_info[2],
+              'total_value': total_info[3],
+            }
+            flag_start = False
+            break
         
         if 'Destination Number' not in ' '.join(table.df.columns.values.tolist()):
           for i, row in enumerate(table.df.values.tolist()):
@@ -128,41 +138,87 @@ class PrimarkPOContract(BasePOContract):
               table.df = table.df.drop(i)
               break
 
-        columns = [
-          x for x in table.df.columns.values.tolist()
-          if x is not None and not x.startswith('Col') and x != ''
-        ]
+        # columns = [
+        #   x for x in table.df.columns.values.tolist()
+        #   if x is not None and not x.startswith('Col') and x != ''
+        # ]
+        columns = ['Destination Number', 'Destination', 'Units', 'Packs', 'Supplier Cost', 'Supplier Cost Value']
         rows = [
           x for x in table.df.iloc[0].copy().values.tolist()
-          if x is not None and x != '' and x != '0'
+          if x is not None and x != '' # and x != '0' # and 'Delivery Totals' not in x
         ]
-        order_header = pd.DataFrame([rows], columns=columns)
+        # print(table)
+        # print(columns, 11111111111)
+        # print(padding_number(rows), 11111111)
+        # print(rows)
+        # print(table.df.iloc[0].copy().values.tolist())
+
+        order_header = pd.DataFrame([padding_number(rows)], columns=columns)
         order_body = table.df[1:].copy()
         if not order_body.empty:
-          columns = [x for x in order_body.iloc[0].values.tolist() if x is not None]
-          rows = [
-            [x for x in row if x is not None and x != '']
-            for row in order_body.iloc[1:, :].copy().values.tolist() 
-          ]
-          order_body = pd.DataFrame(rows, columns=columns)
-          ret.get('delivery_orders').append({
-            "order_header": order_header.to_dict('records'),
-            "order_body": order_body.to_dict('records')
-          })
+          idx = 0
+          columns = None
+          while idx < order_body.shape[0]:
+            print(order_body.iloc[idx, :].values.tolist(), 22222222222222)
+            if 'Pack Id' in ' '.join([x for x in order_body.iloc[idx, :].values.tolist() if x is not None]):
+              columns = [
+                x if x != 'Unit' else 'Units'
+                for x in order_body.iloc[idx].values.tolist() if x is not None
+              ]
+              break
+            idx += 1
+          if columns:
+            # print(columns)
+            rows = [
+              [x for x in row if x is not None and x != '']
+              for row in order_body.iloc[1:, :].copy().values.tolist()
+              if 'Delivery Totals' not in row and 'Destination Number' not in row
+            ]
+            print('============')
+            print(order_header)
+            print(order_body)
+            print(columns)
+            print(rows)
+            print('============')
+            order_body = pd.DataFrame(rows, columns=columns)
+            ret.get('delivery_orders').append({
+              "order_header": order_header.to_dict('records'),
+              "order_body": order_body.to_dict('records')
+            })
     return ret
   
   def get_delivery_detail(self):
+    split_keywords = [
+      'Delivery Number',
+      'Factory',
+      'Transport Mode',
+      'Handover Date',
+      'COM',
+      'Tickets',
+      'H/F',
+      'Incoterms',
+      'Exit Port',
+      'Confirmed'
+    ]
+    regex_pattern = '(' + '|'.join(re.escape(kw) for kw in split_keywords) + ')'
     ret = []
     for idx, block in enumerate(self.blocks):
       text = block.get_text()
+      deli_info_str = ''
+      deli_info_idx = idx
       if text.startswith('Delivery Number'):
-        meta = {}
-        for i in range(idx, idx + 3):
-          for n in self.blocks[i].get_text().replace(':\n', ':').split('\n'):
-            if ':' in n:
-              k, v = [x for x in n.split(':')]
-              meta[k] = v.strip()
         start_table = self.tables.get_first_table_after_rect(block)
+        meta = {}
+
+        while self.blocks[deli_info_idx].get_y_1() < start_table.rect[1]:
+          deli_info_str += self.blocks[deli_info_idx].get_text()
+          deli_info_idx += 1
+
+        deli_info_str = deli_info_str.replace(':\n', ':').replace('\n', '')
+        splitted_string = [x for x in re.split(regex_pattern, deli_info_str) if x != '']
+        for j in range(0, len(splitted_string), 2):
+          k, v = splitted_string[j], splitted_string[j + 1]
+          meta[k] = v.split(':')[1].strip()
         delivery_tables = self.get_delivery_detail_tables(start_table)
         ret.append({
           **meta,

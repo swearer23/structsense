@@ -9,8 +9,8 @@ def parse(pdf_path, clsname='WoolWorthsGroupPOContract', eps=100):
   return result
 
 if __name__ == '__main__':
-  pdf_path = './docs/PurchaseOrder47648175.PDF'
-  key_info = parse(pdf_path, eps=100)
-  # pdf_path = './docs/PO1077867-0.PDF'
-  # key_info = main(pdf_path, 'PrimarkPOContract', eps=30)
+  # pdf_path = './docs/PurchaseOrder47648175.PDF'
+  # key_info = parse(pdf_path, eps=100)
+  pdf_path = './docs/PO1077867-0.PDF'
+  key_info = parse(pdf_path, 'PrimarkPOContract', eps=30)
   pprint(key_info)

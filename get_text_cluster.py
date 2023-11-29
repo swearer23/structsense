@@ -17,7 +17,15 @@ def get_table_cluster(pdf: fitz.Document):
   pd_tables = []
   for page_num in range(pdf.page_count):
     page = pdf.load_page(page_num)
-    table_finder = page.find_tables()
+    table_finder = page.find_tables(
+      snap_y_tolerance=3,
+      snap_x_tolerance=1,
+      text_y_tolerance=3,
+      text_x_tolerance=3,
+      join_tolerance=3,
+      join_y_tolerance=3,
+      intersection_x_tolerance=1
+    )
     for table in table_finder.tables:
       pd_tables.append({
         "pd": table.to_pandas(),

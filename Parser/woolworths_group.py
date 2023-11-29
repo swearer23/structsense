@@ -1,6 +1,5 @@
 from Parser.base import BasePOContract
-from pprint import pprint
-from itertools import chain
+from Parser.utils import get_text_cluster_by_starter
 
 class WoolWorthsGroupPOContract(BasePOContract):
   def __init__(self, *args, **kwargs):
@@ -20,7 +19,7 @@ class WoolWorthsGroupPOContract(BasePOContract):
     return company_phone, company_fax
     
   def get_contact_info(self):
-    contact_info = self.text_cluster.get('cluster').get(6)
+    contact_info = get_text_cluster_by_starter(self.text_cluster, 'CONTACT')
     contact_name = contact_info[3].split(':')[1].strip()
     contact_phone = contact_info[4].split(':')[1].strip()
     contact_email = contact_info[5].split(':')[1].strip()
@@ -36,7 +35,7 @@ class WoolWorthsGroupPOContract(BasePOContract):
     return purchase_order_number, ship_no_later_than, port_arrival_date, port_of_loading, port_of_destination
   
   def get_order_meta_info(self):
-    order_meta_info = self.text_cluster.get('cluster').get(7)
+    order_meta_info = get_text_cluster_by_starter(self.text_cluster, 'SHIPMENT TYPE')
     order_meta_info = [order_meta_info[i] + order_meta_info[i + 1] for i in range(0, len(order_meta_info) - 1, 2)]
     shipment_type = order_meta_info[0].split(':')[-1].strip()
     incoterms = order_meta_info[1].split(':')[-1].strip()
@@ -69,6 +68,10 @@ class WoolWorthsGroupPOContract(BasePOContract):
     sku_pd['price_per_unit'] = sku_pd['Price per Unit'].apply(lambda x: x.split(' ')[0] if x.strip() != '' else None)
     sku_pd['price_per_unit'] = sku_pd['price_per_unit'].ffill()
     sku_pd['total_price'] = sku_pd['price_per_unit'].astype(float) * sku_pd['QTY'].astype(float)
+    sku_pd['Style'] = sku_pd['Style'].apply(lambda x: x.split(' ')[0] if x.strip() != '' else None)
+    sku_pd['Style'] = sku_pd['Style'].ffill()
+    sku_pd['Article Number'] = sku_pd['Article Number'].apply(lambda x: x.split('\n')[0].split(' ')[1])
+    sku_pd['Article Number'] = sku_pd['Style'] + ' ' + sku_pd['Article Number'].ffill()
     return (sku_pd.to_dict('records'))
   
   def parse(self, *args, **kwargs):
@@ -105,3 +108,4 @@ class WoolWorthsGroupPOContract(BasePOContract):
       "SKU": sku
     }
     return self.template
+  

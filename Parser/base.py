@@ -60,3 +60,6 @@ class BasePOContract(ParserBaseClass):
   
   def parse(self, *args, **kwargs):
     raise NotImplementedError
+  
+  def parse_to_schema(self):
+    raise NotImplementedError
