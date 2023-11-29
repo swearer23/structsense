@@ -100,91 +100,85 @@ class PrimarkPOContract(BasePOContract):
     return package_info
   
   def get_delivery_detail_tables(self, start_table):
+    def is_start(table):
+      return table == start_table
+    def is_end(table):
+      all_text = ' '.join([
+        ' '.join([
+          y for y in x if y is not None
+        ]) for x in table.df.values.tolist() if x is not None
+      ])
+      return 'Delivery Totals' in all_text
     ret = {
       "delivery_orders": [],
       "delivery_totals": {}
     }
     flag_start = False
+    section_rows = []
     for table in self.tables:
-      print(table)
-      if table == start_table:
-        # print([x for x in table.df.columns.values.tolist() if not x.startswith('Col')])
+      if is_start(table):
         flag_start = True
+      
       if not flag_start: continue
-      # text = table.df.to_string(index=False, header=True)
-      # print(111111111, 'Destination Number' in text, text)
-      if 'Destination Number' in table.df.columns.values.tolist(): # to_string(index=True, header=True):
-        print(table)
-        for i in range(table.df.shape[0]):
-          if 'Delivery Totals' in table.df.iloc[i, :].values.tolist():
-            total_info = [
-              x for x in table.df.iloc[i, :].copy().values.tolist()
-              if x is not None and x != '' # and x != '0'
-            ]
-            # print(table.df.iloc[i, :].values.tolist())
-            # print(total_info)
-            ret['delivery_totals'] = {
-              'total_unit': total_info[1],
-              'total_packs': total_info[2],
-              'total_value': total_info[3],
-            }
-            flag_start = False
-            break
-        
-        if 'Destination Number' not in ' '.join(table.df.columns.values.tolist()):
-          for i, row in enumerate(table.df.values.tolist()):
-            if 'Destination Number' in row:
-              table.df.columns = table.df.iloc[i, :].copy().values.tolist()
-              table.df = table.df.drop(i)
-              break
-
-        # columns = [
-        #   x for x in table.df.columns.values.tolist()
-        #   if x is not None and not x.startswith('Col') and x != ''
-        # ]
+      section_rows.append(table.df.columns.values.tolist())
+      for i in range(table.df.shape[0]):
+        section_rows.append(table.df.iloc[i, :].values.tolist())
+      if is_end(table):
+        flag_start = False
+        break
+    current_order = None
+    idx = 0
+    while idx < len(section_rows):
+      row = section_rows[idx]
+      row = [x for x in row if x is not None and x != '']
+      if 'Delivery Totals' in ' '.join(row):
+        ret['delivery_totals'] = {
+          'total_unit': row[1],
+          'total_packs': row[2],
+          'total_value': row[3],
+        }
+      if 'Destination Number' in ' '.join(row) and 'Delivery Totals' not in ' '.join([
+        x for x in
+        section_rows[idx + 1]
+        if x is not None and x != ''
+      ]):
+        if current_order:
+          ret.get('delivery_orders').append(current_order)
+          current_order = None
         columns = ['Destination Number', 'Destination', 'Units', 'Packs', 'Supplier Cost', 'Supplier Cost Value']
-        rows = [
-          x for x in table.df.iloc[0].copy().values.tolist()
-          if x is not None and x != '' # and x != '0' # and 'Delivery Totals' not in x
+        order_header = pd.DataFrame([padding_number([
+          x for x in section_rows[idx + 1]
+          if x is not None and x != ''
+        ])], columns=columns)
+        current_order = {
+          "order_header": order_header.to_dict('records'),
+          "order_body": []
+        }
+      if 'Pack Id' in ' '.join(row):
+        columns = [
+          x if x != 'Unit' else 'Units'
+          for x in row if x is not None and 'Col' not in x
         ]
-        # print(table)
-        # print(columns, 11111111111)
-        # print(padding_number(rows), 11111111)
-        # print(rows)
-        # print(table.df.iloc[0].copy().values.tolist())
-
-        order_header = pd.DataFrame([padding_number(rows)], columns=columns)
-        order_body = table.df[1:].copy()
-        if not order_body.empty:
-          idx = 0
-          columns = None
-          while idx < order_body.shape[0]:
-            print(order_body.iloc[idx, :].values.tolist(), 22222222222222)
-            if 'Pack Id' in ' '.join([x for x in order_body.iloc[idx, :].values.tolist() if x is not None]):
-              columns = [
-                x if x != 'Unit' else 'Units'
-                for x in order_body.iloc[idx].values.tolist() if x is not None
-              ]
-              break
-            idx += 1
-          if columns:
-            # print(columns)
-            rows = [
-              [x for x in row if x is not None and x != '']
-              for row in order_body.iloc[1:, :].copy().values.tolist()
-              if 'Delivery Totals' not in row and 'Destination Number' not in row
-            ]
-            print('============')
-            print(order_header)
-            print(order_body)
-            print(columns)
-            print(rows)
-            print('============')
-            order_body = pd.DataFrame(rows, columns=columns)
-            ret.get('delivery_orders').append({
-              "order_header": order_header.to_dict('records'),
-              "order_body": order_body.to_dict('records')
-            })
+        pack_rows = []
+        idx +=1
+        while 'Destination Number' not in ' '.join([
+          x for x in
+          section_rows[idx]
+          if x is not None and x != ''
+        ]):
+          pack_row = section_rows[idx]
+          clean_row = [
+            x for x in pack_row
+            if x is not None and x != '' and 'Col' not in x
+          ]
+          if len(clean_row) == 0:
+            break
+          pack_rows.append(clean_row)
+          idx += 1
+        order_body = pd.DataFrame(pack_rows, columns=columns)
+        current_order['order_body'] = order_body.to_dict('records')
+      idx += 1
+    ret['delivery_orders'].append(current_order)
     return ret
   
   def get_delivery_detail(self):
